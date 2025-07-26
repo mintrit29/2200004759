@@ -1,51 +1,83 @@
-﻿@model NhomDangKhoa.ViewModels.EmployeeViewModel
+﻿@model NhomDangKhoa.Models.ViewModels.EmployeeViewModel
 
-<form asp-action="Create" enctype="multipart/form-data">
-    <div asp-validation-summary="All" class="text-danger"></div>
+@{
+    ViewData["Title"] = "Create New Employee"; // Đặt tiêu đề trang
+}
 
-    <div class="form-group">
-        <label asp-for="EmployeeName"></label>
-        <input asp-for="EmployeeName" class="form-control" />
+<h1>Create New Employee</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" enctype="multipart/form-data">
+            @* Đảm bảo có enctype="multipart/form-data" *@
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div> @* Đổi thành ModelOnly để chỉ hiển thị lỗi không gắn với trường cụ thể *@
+
+            <div class="form-group">
+                <label asp-for="Employee.EmployeeName" class="control-label"></label> @* Sửa: Model.Employee.EmployeeName *@
+                <input asp-for="Employee.EmployeeName" class="form-control" />
+                <span asp-validation-for="Employee.EmployeeName" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.Gender" class="control-label"></label> @* Sửa: Model.Employee.Gender *@
+                <select asp-for="Employee.Gender" class="form-control">
+                    @* Sửa: Model.Employee.Gender *@
+                    <option value="">-- Select Gender --</option> @* Thêm option mặc định *@
+                    <option value="false">Male</option> @* Giới tính: false = Male (theo đề bài 0=Male) *@
+                    <option value="true">Female</option> @* Giới tính: true = Female (theo đề bài 1=Female) *@
+                </select>
+                <span asp-validation-for="Employee.Gender" class="text-danger"></span>z
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.DateOfBirth" class="control-label"></label> @* Sửa: Model.Employee.DateOfBirth *@
+                <input asp-for="Employee.DateOfBirth" type="date" class="form-control" />
+                <span asp-validation-for="Employee.DateOfBirth" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.Email" class="control-label"></label> @* Sửa: Model.Employee.Email *@
+                <input asp-for="Employee.Email" class="form-control" />
+                <span asp-validation-for="Employee.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.Phone" class="control-label"></label> @* Sửa: Model.Employee.Phone *@
+                <input asp-for="Employee.Phone" class="form-control" />
+                <span asp-validation-for="Employee.Phone" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.Salary" class="control-label"></label> @* Sửa: Model.Employee.Salary *@
+                <input asp-for="Employee.Salary" class="form-control" type="number" step="0.01" /> @* Đổi type và thêm step *@
+                <span asp-validation-for="Employee.Salary" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Employee.DepartmentId" class="control-label"></label> @* Sửa: Model.Employee.DepartmentId *@
+                <select asp-for="Employee.DepartmentId" asp-items="Model.Departments" class="form-control">
+                    <option value="">-- Select Department --</option> @* Thêm option mặc định *@
+                </select>
+                <span asp-validation-for="Employee.DepartmentId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label for="Photo" class="control-label">Photo</label> @* Sửa: Dùng `for="Photo"` và `name="Photo"` *@
+                <input type="file" name="Photo" id="Photo" class="form-control-file" accept="image/jpeg,image/png" />
+                <span asp-validation-for="Employee.PhotoImagePath" class="text-danger"></span> @* Hiển thị lỗi validation cho PhotoImagePath từ Model.Employee *@
+            </div>
+
+            <div class="form-group mt-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a asp-action="Index" class="btn btn-secondary ml-2">Back to List</a>
+            </div>
+        </form>
     </div>
+</div>
 
-    <div class="form-group">
-        <label asp-for="Gender"></label>
-        <select asp-for="Gender" class="form-control">
-            <option value="true">Nam</option>
-            <option value="false">Nữ</option>
-        </select>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="DateOfBirth"></label>
-        <input asp-for="DateOfBirth" type="date" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Email"></label>
-        <input asp-for="Email" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Phone"></label>
-        <input asp-for="Phone" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Salary"></label>
-        <input asp-for="Salary" class="form-control" />
-    </div>
-
-    <div class="form-group">
-        <label asp-for="DepartmentId"></label>
-        <select asp-for="DepartmentId" asp-items="Model.Departments" class="form-control"></select>
-    </div>
-
-    <div class="form-group">
-        <label asp-for="Photo"></label>
-        <input asp-for="Photo" type="file" class="form-control" />
-        <span asp-validation-for="Photo" class="text-danger"></span>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Tạo mới</button>
-</form>
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
