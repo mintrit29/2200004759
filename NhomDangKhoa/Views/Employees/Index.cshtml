@@ -1,11 +1,19 @@
-﻿@model IEnumerable<NhomDangKhoa.Models.Employee>
+﻿@model IEnumerable<NhomDangKhoa.Models.ViewModels.EmployeeListViewModel>
 
 @{
     ViewData["Title"] = "Index";
 }
 
 <h1>Index</h1>
-
+<!-- Search form -->
+<form asp-action="Index" method="get" class="mb-3">
+    <div class="input-group">
+        <input type="text" name="searchString" class="form-control" placeholder="Search by name, phone, or email..." value="@ViewBag.SearchString" />
+        <div class="input-group-append">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+    </div>
+</form>
 <p>
     <a asp-action="Create">Create New</a>
 </p>
@@ -34,7 +42,7 @@
                 @Html.DisplayNameFor(model => model.Salary)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Department)
+                @Html.DisplayNameFor(model => model.DepartmentName)
             </th>
             <th></th>
         </tr>
@@ -64,7 +72,7 @@
                 @Html.DisplayFor(modelItem => item.Salary)
             </td>
             <td>
-                @Html.DisplayFor(modelItem => item.Department.DepartmentId)
+                    @Html.DisplayFor(modelItem => item.DepartmentName)
             </td>
             <td>
                 <a asp-action="Edit" asp-route-id="@item.EmployeeId">Edit</a> |

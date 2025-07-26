@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NhomDangKhoa.Data;
 using NhomDangKhoa.Models;
+using NhomDangKhoa.Models.ViewModels;
 
 namespace NhomDangKhoa.Controllers
 {
@@ -20,27 +19,49 @@ namespace NhomDangKhoa.Controllers
         }
 
         // GET: Employees
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchString)
         {
-            var _22bitv02EmployeeContext = _context.Employees.Include(e => e.Department);
-            return View(await _22bitv02EmployeeContext.ToListAsync());
+            var employeesQuery = _context.Employees
+                .Include(e => e.Department)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                string lower = searchString.ToLower();
+                employeesQuery = employeesQuery.Where(e =>
+                    e.EmployeeName.ToLower().Contains(lower) ||
+                    e.Phone.ToLower().Contains(lower) ||
+                    e.Email.ToLower().Contains(lower));
+            }
+
+
+            var viewModelList = await employeesQuery
+                .Select(e => new EmployeeListViewModel
+                {
+                    EmployeeId = e.EmployeeId,
+                    EmployeeName = e.EmployeeName,
+                    DepartmentName = e.Department.DepartmentName,
+                    Gender = e.Gender == true ? "Male" : e.Gender == false ? "Female" : "Unknown",
+
+                    PhotoImagePath = e.PhotoImagePath
+                })
+                .ToListAsync();
+
+            ViewBag.SearchString = searchString;
+
+            return View(viewModelList);
         }
 
         // GET: Employees/Details/5
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var employee = await _context.Employees
                 .Include(e => e.Department)
                 .FirstOrDefaultAsync(m => m.EmployeeId == id);
-            if (employee == null)
-            {
-                return NotFound();
-            }
+
+            if (employee == null) return NotFound();
 
             return View(employee);
         }
@@ -48,95 +69,105 @@ namespace NhomDangKhoa.Controllers
         // GET: Employees/Create
         public IActionResult Create()
         {
-            ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentId");
-            return View();
+            var viewModel = new EmployeeViewModel
+            {
+                Employee = new Employee(),
+                Departments = _context.Departments.Select(d => new SelectListItem
+                {
+                    Value = d.DepartmentId.ToString(),
+                    Text = d.DepartmentName
+                })
+            };
+
+            return View(viewModel);
         }
 
         // POST: Employees/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("EmployeeId,EmployeeName,Gender,DateOfBirth,Email,Phone,PhotoImagePath,Salary,DepartmentId")] Employee employee)
+        public async Task<IActionResult> Create(EmployeeViewModel viewModel)
         {
             if (ModelState.IsValid)
             {
-                _context.Add(employee);
+                _context.Add(viewModel.Employee);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentId", employee.DepartmentId);
-            return View(employee);
+
+            viewModel.Departments = _context.Departments.Select(d => new SelectListItem
+            {
+                Value = d.DepartmentId.ToString(),
+                Text = d.DepartmentName
+            });
+
+            return View(viewModel);
         }
 
         // GET: Employees/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var employee = await _context.Employees.FindAsync(id);
-            if (employee == null)
+            if (employee == null) return NotFound();
+
+            var viewModel = new EmployeeViewModel
             {
-                return NotFound();
-            }
-            ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentId", employee.DepartmentId);
-            return View(employee);
+                Employee = employee,
+                Departments = _context.Departments.Select(d => new SelectListItem
+                {
+                    Value = d.DepartmentId.ToString(),
+                    Text = d.DepartmentName
+                })
+            };
+
+            return View(viewModel);
         }
 
         // POST: Employees/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("EmployeeId,EmployeeName,Gender,DateOfBirth,Email,Phone,PhotoImagePath,Salary,DepartmentId")] Employee employee)
+        public async Task<IActionResult> Edit(int id, EmployeeViewModel viewModel)
         {
-            if (id != employee.EmployeeId)
-            {
+            if (id != viewModel.Employee.EmployeeId)
                 return NotFound();
-            }
 
             if (ModelState.IsValid)
             {
                 try
                 {
-                    _context.Update(employee);
+                    _context.Update(viewModel.Employee);
                     await _context.SaveChangesAsync();
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!EmployeeExists(employee.EmployeeId))
-                    {
+                    if (!EmployeeExists(viewModel.Employee.EmployeeId))
                         return NotFound();
-                    }
                     else
-                    {
                         throw;
-                    }
                 }
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentId", employee.DepartmentId);
-            return View(employee);
+
+            viewModel.Departments = _context.Departments.Select(d => new SelectListItem
+            {
+                Value = d.DepartmentId.ToString(),
+                Text = d.DepartmentName
+            });
+
+            return View(viewModel);
         }
 
         // GET: Employees/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
-            if (id == null)
-            {
-                return NotFound();
-            }
+            if (id == null) return NotFound();
 
             var employee = await _context.Employees
                 .Include(e => e.Department)
                 .FirstOrDefaultAsync(m => m.EmployeeId == id);
-            if (employee == null)
-            {
-                return NotFound();
-            }
+
+            if (employee == null) return NotFound();
 
             return View(employee);
         }
@@ -148,9 +179,7 @@ namespace NhomDangKhoa.Controllers
         {
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
-            {
                 _context.Employees.Remove(employee);
-            }
 
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
