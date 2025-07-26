@@ -89,23 +89,34 @@ namespace NhomDangKhoa.Controllers
                 var result = await ProcessUploadImage(Photo);
                 if (!result.IsSuccess)
                 {
-                    ModelState.AddModelError("Employee.PhotoImagePath", result.ErrorMessage!);
-                    vm.Departments = LoadDepartments();
-                    return View(vm);
+                    //ModelState.AddModelError("Employee.PhotoImagePath", result.ErrorMessage!);
+                    //vm.Departments = LoadDepartments();
+                    //return View(vm);
                 }
 
                 vm.Employee.PhotoImagePath = result.FilePath;
             }
 
-            if (ModelState.IsValid)
+            //if (ModelState.IsValid)
+            //{
+            //    _context.Add(vm.Employee);
+            //    await _context.SaveChangesAsync();
+            //    return RedirectToAction(nameof(Index));
+            //}
+            try
             {
                 _context.Add(vm.Employee);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-
-            vm.Departments = LoadDepartments();
-            return View(vm);
+            catch (Exception ex)
+            {
+                
+                ModelState.AddModelError(string.Empty, $"An error occurred while saving: {ex.Message}");
+                vm.Departments = LoadDepartments();
+                return View(vm);
+            }
+            
         }
 
         // GET: Employees/Edit/5
