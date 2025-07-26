@@ -35,5 +35,5 @@ public partial class Employee
 
     [ForeignKey("DepartmentId")]
     [InverseProperty("Employees")]
-    public virtual Department Department { get; set; } = null!;
+    public virtual Department ?Department { get; set; }
 }
