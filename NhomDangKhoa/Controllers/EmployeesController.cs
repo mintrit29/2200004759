@@ -1,12 +1,11 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using NhomDangKhoa.Data;
 using NhomDangKhoa.Models;
-using NhomDangKhoa.ViewModels;
+using NhomDangKhoa.Models.ViewModels; // Or NhomDangKhoa.ViewModels depending on your project structure
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,11 +23,37 @@ namespace NhomDangKhoa.Controllers
             _env = env;
         }
 
-        // GET: Employees
-        public async Task<IActionResult> Index()
+        // GET: Employees - Merged with Search functionality
+        public async Task<IActionResult> Index(string searchString)
         {
-            var data = _context.Employees.Include(e => e.Department);
-            return View(await data.ToListAsync());
+            var employeesQuery = _context.Employees
+                .Include(e => e.Department)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchString))
+            {
+                string lower = searchString.ToLower();
+                employeesQuery = employeesQuery.Where(e =>
+                    e.EmployeeName.ToLower().Contains(lower) ||
+                    e.Phone.ToLower().Contains(lower) ||
+                    e.Email.ToLower().Contains(lower));
+            }
+
+            // Using a ViewModel for the list view is good practice
+            var viewModelList = await employeesQuery
+                .Select(e => new EmployeeListViewModel
+                {
+                    EmployeeId = e.EmployeeId,
+                    EmployeeName = e.EmployeeName,
+                    DepartmentName = e.Department.DepartmentName,
+                    Gender = e.Gender == true ? "Male" : e.Gender == false ? "Female" : "Unknown",
+                    PhotoImagePath = e.PhotoImagePath
+                })
+                .ToListAsync();
+
+            ViewBag.SearchString = searchString;
+
+            return View(viewModelList);
         }
 
         // GET: Employees/Details/5
@@ -39,12 +64,13 @@ namespace NhomDangKhoa.Controllers
             var employee = await _context.Employees
                 .Include(e => e.Department)
                 .FirstOrDefaultAsync(m => m.EmployeeId == id);
+
             if (employee == null) return NotFound();
 
             return View(employee);
         }
 
-        // GET: Employees/Create
+        // GET: Employees/Create - From 'main' to support image upload
         public IActionResult Create()
         {
             var vm = new EmployeeViewModel
@@ -59,8 +85,7 @@ namespace NhomDangKhoa.Controllers
             return View(vm);
         }
 
-
-        // POST: Employees/Create
+        // POST: Employees/Create - From 'main' with full image upload logic
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(EmployeeViewModel model)
@@ -80,10 +105,15 @@ namespace NhomDangKhoa.Controllers
 
             if (model.Photo != null)
             {
-                var ext = Path.GetExtension(model.Photo.FileName).ToLowerInvariant();
-                if (!new[] { ".jpg", ".jpeg", ".png" }.Contains(ext) || model.Photo.Length > 2 * 1024 * 1024)
+                // Using the helper method for consistency
+                var uploadResult = await ProcessUploadImage(model.Photo);
+                if (uploadResult.IsSuccess)
                 {
-                    ModelState.AddModelError("Photo", "Chỉ chấp nhận ảnh .jpg/.png và nhỏ hơn 2MB");
+                    uniqueFileName = uploadResult.FilePath;
+                }
+                else
+                {
+                    ModelState.AddModelError("Photo", uploadResult.ErrorMessage!);
                     model.Departments = _context.Departments.Select(d => new SelectListItem
                     {
                         Value = d.DepartmentId.ToString(),
@@ -91,14 +121,6 @@ namespace NhomDangKhoa.Controllers
                     }).ToList();
                     return View(model);
                 }
-
-                var uploadPath = Path.Combine(_env.WebRootPath, "images/photos");
-                Directory.CreateDirectory(uploadPath);
-                uniqueFileName = Guid.NewGuid() + ext;
-                var filePath = Path.Combine(uploadPath, uniqueFileName);
-
-                using var fs = new FileStream(filePath, FileMode.Create);
-                await model.Photo.CopyToAsync(fs);
             }
 
             var employee = new Employee
@@ -110,7 +132,7 @@ namespace NhomDangKhoa.Controllers
                 Phone = model.Phone,
                 Salary = model.Salary,
                 DepartmentId = model.DepartmentId,
-                PhotoImagePath = uniqueFileName != null ? "/images/photos/" + uniqueFileName : null
+                PhotoImagePath = uniqueFileName
             };
 
             _context.Add(employee);
@@ -119,19 +141,20 @@ namespace NhomDangKhoa.Controllers
         }
 
 
-        // GET: Employees/Edit/5
+        // GET: Employees/Edit/5 - From 'main'
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
 
             var employee = await _context.Employees.FindAsync(id);
             if (employee == null) return NotFound();
-
+            
+            // This approach (using ViewData) is from 'main' and matches its POST Edit method
             ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentName", employee.DepartmentId);
             return View(employee);
         }
 
-        // POST: Employees/Edit/5
+        // POST: Employees/Edit/5 - From 'main' with image update logic
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Employee employee, IFormFile? Photo)
@@ -147,7 +170,7 @@ namespace NhomDangKhoa.Controllers
                     ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentName", employee.DepartmentId);
                     return View(employee);
                 }
-
+                // TODO: Consider deleting the old image file from wwwroot
                 employee.PhotoImagePath = result.FilePath;
             }
 
@@ -155,6 +178,8 @@ namespace NhomDangKhoa.Controllers
             {
                 try
                 {
+                    // It's safer to attach and modify state for only the properties you want to change
+                    // But for simplicity, Update() is used here as in the original code.
                     _context.Update(employee);
                     await _context.SaveChangesAsync();
                 }
@@ -168,7 +193,7 @@ namespace NhomDangKhoa.Controllers
 
                 return RedirectToAction(nameof(Index));
             }
-
+            
             ViewData["DepartmentId"] = new SelectList(_context.Departments, "DepartmentId", "DepartmentName", employee.DepartmentId);
             return View(employee);
         }
@@ -181,6 +206,7 @@ namespace NhomDangKhoa.Controllers
             var employee = await _context.Employees
                 .Include(e => e.Department)
                 .FirstOrDefaultAsync(m => m.EmployeeId == id);
+
             if (employee == null) return NotFound();
 
             return View(employee);
@@ -194,6 +220,7 @@ namespace NhomDangKhoa.Controllers
             var employee = await _context.Employees.FindAsync(id);
             if (employee != null)
             {
+                // TODO: Consider deleting the image file from wwwroot when deleting an employee
                 _context.Employees.Remove(employee);
             }
 
@@ -206,7 +233,7 @@ namespace NhomDangKhoa.Controllers
             return _context.Employees.Any(e => e.EmployeeId == id);
         }
 
-        // ⬇️ Tiện ích upload ảnh
+        // ⬇️ Image upload utility from 'main'
         private async Task<(bool IsSuccess, string? FilePath, string? ErrorMessage)> ProcessUploadImage(IFormFile photo)
         {
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
@@ -219,7 +246,7 @@ namespace NhomDangKhoa.Controllers
                 return (false, null, "Dung lượng ảnh tối đa là 2MB");
 
             var uploadsFolder = Path.Combine(_env.WebRootPath, "images/photos");
-            Directory.CreateDirectory(uploadsFolder);
+            Directory.CreateDirectory(uploadsFolder); // Ensures the directory exists
 
             var uniqueName = Guid.NewGuid().ToString() + extension;
             var filePath = Path.Combine(uploadsFolder, uniqueName);
@@ -227,6 +254,7 @@ namespace NhomDangKhoa.Controllers
             using var fs = new FileStream(filePath, FileMode.Create);
             await photo.CopyToAsync(fs);
 
+            // Return the web-accessible path
             return (true, "/images/photos/" + uniqueName, null);
         }
     }
