@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using NhomDangKhoa.Models;
@@ -20,7 +20,7 @@ public partial class _22bitv02EmployeeContext : DbContext
 
     public virtual DbSet<Employee> Employees { get; set; }
 
-
+   
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Department>(entity =>
